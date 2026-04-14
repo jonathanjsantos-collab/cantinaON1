@@ -24,48 +24,70 @@ Na prática, o sistema substitui processos manuais por uma base centralizada de 
 
 ## 🏗️ Arquitetura do Sistema
 
-O **CantinaOn** segue uma arquitetura **cliente-servidor em camadas**, em que o frontend consome uma API REST no backend, e o backend centraliza as regras de negócio e a comunicação com o banco de dados.
+A arquitetura de software é a organização fundamental do sistema: ela define seus componentes, os relacionamentos entre eles e as diretrizes que orientam sua evolução e implantação. Em outras palavras, funciona como o “plano de construção” da aplicação, mostrando como cada parte se conecta para atender às necessidades do negócio.
 
-### Visão geral da arquitetura
+No **CantinaOn**, a arquitetura segue o estilo **cliente-servidor em camadas**, separando interface, processamento das regras de negócio e persistência de dados. Essa divisão facilita a manutenção, os testes, a evolução do código e também o deployment, pois cada parte pode ser configurada e publicada com responsabilidades bem definidas.
 
-- o **frontend** é responsável pela interface e interação com o usuário;
-- o **backend** expõe os endpoints da aplicação, valida dados e aplica as regras de negócio;
-- o **PostgreSQL** atua como fonte principal de persistência;
-- integrações externas, como **Mercado Pago** e o frontend **canteen-express**, se conectam ao backend.
+### Componentes principais
 
-### Diagrama de arquitetura
+- **Camada de apresentação (Frontend):** aplicação web em **React + Vite**, responsável pelas telas, rotas, contexts e interação com o usuário.
+- **Camada de aplicação (Backend):** API em **Node.js + Express**, responsável por autenticação, validação, regras de negócio e exposição dos endpoints REST.
+- **Camada de domínio/serviços:** concentra os fluxos centrais do sistema, como pedidos, estoque, carteira e confirmação de retirada.
+- **Camada de persistência:** composta pelos repositórios e pela lógica de acesso a dados, usada para consultar e gravar informações no PostgreSQL.
+- **Banco de dados:** responsável pelo armazenamento persistente de usuários, produtos, pedidos, pagamentos, vínculos parentais, carteira e demais entidades do sistema.
+
+### Relação entre as camadas
+
+O fluxo principal do sistema acontece da seguinte forma:
+
+1. o usuário acessa a aplicação pelo navegador;
+2. o frontend renderiza a interface e envia requisições para a API;
+3. o backend recebe a requisição, valida autenticação e regras de acesso;
+4. a camada de serviços processa a lógica de negócio;
+5. a camada de persistência realiza leitura e escrita no PostgreSQL;
+6. a resposta retorna ao frontend e é exibida ao usuário.
+
+### Representação visual da arquitetura
 
 ```mermaid
 flowchart LR
-    U[Usuarios<br/>alunos, responsaveis, staff e gestao]
-    F[Frontend React]
-    B[Backend Node.js + Express<br/>API REST]
+    U[Usuario no navegador]
+    F[Frontend<br/>React + Vite]
+    A[API Backend<br/>Node.js + Express]
+    S[Camada de Servicos<br/>Pedidos, Estoque, Carteira, Retirada]
+    R[Camada de Persistencia<br/>Repositorios]
     DB[(PostgreSQL)]
-    MP[Mercado Pago<br/>integracao prevista]
-    CE[Frontend externo<br/>canteen-express]
 
     U --> F
-    F -->|HTTP/JSON| B
-    CE -->|HTTP/JSON| B
-    B -->|SQL| DB
-    B -->|checkout/webhook| MP
+    F -->|HTTP / JSON| A
+    A --> S
+    S --> R
+    R -->|SQL| DB
+    DB --> R
+    R --> S
+    S --> A
+    A --> F
 ```
 
-### Responsabilidade de cada camada
+### Como essa arquitetura ajuda no deployment
 
-#### Frontend
-O frontend é responsável por exibir o cardápio, autenticar usuários, permitir criação de pedidos, consultar pedidos já realizados e interagir com funcionalidades como carteira, fluxo parental e operação.
+Essa arquitetura é importante para a implantação porque deixa claro **o que precisa ser publicado, configurado e monitorado** em cada ambiente:
 
-#### Backend
-O backend concentra a lógica principal do sistema. Ele recebe requisições do frontend, valida autenticação, consulta o banco, processa pedidos, controla pagamento, estoque e regras operacionais, além de expor os endpoints usados na aplicação.
+- o **frontend** pode ser publicado separadamente como aplicação web;
+- o **backend** precisa estar em execução como serviço Node.js, expondo a API HTTP;
+- o **PostgreSQL** deve estar disponível antes da API, pois o backend depende da variável `DATABASE_URL` para se conectar ao banco;
+- em desenvolvimento, o frontend pode usar proxy `/api` para encaminhar chamadas ao backend em `localhost:3000`;
+- em produção, essa separação permite alterar host, porta e variáveis de ambiente sem modificar as regras de negócio.
 
-#### Banco de Dados
-O PostgreSQL armazena usuários, produtos, alérgenos, pedidos, pagamentos, carteira, vínculos parentais e demais informações persistentes do sistema. No estado atual do projeto, ele também é parte central do fluxo de autenticação.
+### Resumo arquitetural
 
-#### Integrações externas
-O sistema já prevê integração com serviços externos, principalmente:
-- **Mercado Pago**, para checkout e webhook de pagamentos;
-- **canteen-express**, como frontend/protótipo externo em integração incremental com o backend atual.
+Em termos simples, o **CantinaOn** está organizado em três grandes blocos:
+
+- **Frontend:** interface e experiência do usuário;
+- **Backend:** processamento das regras do sistema;
+- **Banco de dados:** armazenamento persistente das informações.
+
+Essa organização torna o sistema mais compreensível, facilita a evolução do projeto e cria uma base adequada para crescimento futuro.
 
 ### Fluxo resumido de uma compra
 
